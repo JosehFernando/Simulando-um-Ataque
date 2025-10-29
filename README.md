@@ -8,7 +8,7 @@ O comando script é uma ferramenta nativa do Linux que grava tudo o que aparece 
 Exemplo de uso:
     script nome_do_arquivo.txt
 
-Após executar o comando acima, todas as etapas realizadas no terminal foram gravadas no arquivo medusa_teste.log — incluindo:
+Após executar o comando acima, todas as etapas realizadas no terminal foram gravadas no arquivo nome_do_arquivo.txt— incluindo:
     Execução de varredura com nmap para identificar serviços ativos no Metasploitable 2;
     Testes de autenticação e força bruta no FTP utilizando o Medusa e wordlists personalizadas (user.txt e pass.txt);
     Tentativas automatizadas de login em formulários web vulneráveis (DVWA);
@@ -21,6 +21,74 @@ Ao finalizar o procedimento, usei o comando:
 
 para encerrar a gravação. Isso gerou o arquivo de log completo com todo o passo a passo documentado automaticamente.
 
+
+Introdução
+
+Durante o desafio prático proposto pela DIO, realizei a implementação de um ambiente de laboratório de segurança com o objetivo de estudar e simular ataques de força bruta e password spraying utilizando a ferramenta Medusa no Kali Linux, tendo como alvo o sistema Metasploitable 2 e aplicações vulneráveis como o DVWA (Damn Vulnerable Web Application).
+O objetivo principal foi compreender o funcionamento dessas técnicas, testar credenciais fracas e registrar todo o processo de forma detalhada, mantendo o foco na aprendizagem prática, documentação e medidas de mitigação.
+
+Configuração do Ambiente
+Criei duas máquinas virtuais no VirtualBox:
+    Kali Linux (máquina atacante)
+    Metasploitable 2 (máquina vulnerável)
+Ambas foram configuradas em rede Host-Only, permitindo comunicação direta entre elas sem acesso à internet.
+O IP da máquina alvo (Metasploitable) ficou 192.168.57.3.
+
+Varredura de Serviços – nmap -sV 192.168.57.3
+
+O primeiro passo foi identificar os serviços ativos na máquina alvo.
+Com o comando acima, obtive como resultado diversos serviços vulneráveis:
+    FTP (vsftpd 2.3.4)
+    SSH (OpenSSH 4.7)
+    HTTP (Apache 2.2.8)
+    SMB (Samba 3.x)
+    MySQL, PostgreSQL, VNC, Telnet e outros
+
+Essa análise serviu como base para escolher os serviços que seriam testados posteriormente.
+
+Teste Manual de Login FTP – ftp 192.168.57.3
+Conectei manualmente ao serviço FTP e testei logins com credenciais simples e padrão, como:
+    Usuário: msfadmin
+    Senha: msfadmin
+A autenticação foi bem-sucedida, confirmando que o FTP estava vulnerável a credenciais padrão.
+
+Criação de Wordlists Personalizadas
+Para automatizar os testes, criei listas simples de usuários e senhas
+Ataque de Força Bruta em FTP – medusa -h 192.168.57.3 -U user.txt -P pass.txt -M ftp
+Executei o Medusa apontando para o IP do Metasploitable, utilizando as listas criadas.
+O Medusa testou as combinações de usuário e senha e retornou sucesso para o par
+
+Teste Web (DVWA) – medusa -h 192.168.57.3 -U user.txt -P pass.txt -M http
+Realizei também testes contra o serviço HTTP da DVWA, explorando o módulo http do Medusa.
+Essa etapa serviu para compreender como automatizar ataques em formulários web vulneráveis.
+Embora o ataque completo exija a configuração do parâmetro -m FORM, o teste foi útil para aprender sobre o funcionamento do módulo HTTP e suas opções.
+Enumeração SMB – enum4linux -a 192.168.57.3
+Utilizei o enum4linux para enumerar usuários e compartilhamentos SMB disponíveis.
+O comando -a realiza uma enumeração completa, retornando:
+Lista de usuários do sistema (root, msfadmin, user, service, etc.);
+Compartilhamentos (tmp, opt, ADMIN$, msfadmin);
+Políticas e permissões de acesso.
+Essas informações foram essenciais para planejar o teste de força bruta via SMB.
+
+Ataque SMB – medusa -h 192.168.57.3 -U user.txt -P pass.txt -M smbnt
+Em seguida, executei o Medusa contra o serviço SMB utilizando o módulo smbnt.
+O resultado confirmou que o mesmo par de credenciais (msfadmin:msfadmin) também era válido no SMB
+
+Listagem de Compartilhamentos – smbclient -L //192.168.57.3 -U msfadmin
+
+Com a credencial válida, listei os compartilhamentos SMB acessíveis.
+O comando retornou vários diretórios, incluindo:
+    tmp
+    opt
+    msfadmin
+    ADMIN$
+Foi possível visualizar e acessar alguns arquivos, comprovando a exposição de dados via SMB.
+
+Encerramento da Sessão – exit
+Após concluir os testes, finalizei a gravação do script com o comando exit.
+O arquivo medusa_teste.log foi salvo contendo toda a sessão completa.
+
+Segue abaixo o resultado do que foi gravado no script:
 
 ┌──(root㉿kali)-[/home/kali]
 └─# nmap -sV 21,22,80,445,193 192.168.57.3
